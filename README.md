@@ -6,6 +6,7 @@ Proyecto multiplataforma Android nativo (Kotlin + Jetpack Compose) para acompa?a
 
 - `docs/product_spec.md`: requisitos funcionales, roadmap y KPIs.
 - `docs/architecture.md`: arquitectura t?cnica, m?dulos y decisiones clave.
+- `docs/firebase_setup.md`: pasos para conectar la app con Firebase (Firestore, autenticaci?n y `google-services.json`).
 
 ## Estructura
 
