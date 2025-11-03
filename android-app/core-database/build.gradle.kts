@@ -37,4 +37,5 @@ dependencies {
     kapt(libs.androidx.room.compiler)
 
     implementation(libs.coroutines.core)
+    implementation(libs.kotlinx.datetime)
 }

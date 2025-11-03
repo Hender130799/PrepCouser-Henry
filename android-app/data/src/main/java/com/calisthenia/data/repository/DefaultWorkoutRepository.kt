@@ -1,5 +1,11 @@
 package com.calisthenia.data.repository
 
+import com.calisthenia.core.database.dao.WorkoutPlanDao
+import com.calisthenia.core.database.entity.WorkoutExerciseEntity
+import com.calisthenia.core.database.entity.WorkoutPlanEntity
+import com.calisthenia.core.database.entity.WorkoutPlanWithSessions
+import com.calisthenia.core.database.entity.WorkoutSessionEntity
+import com.calisthenia.core.database.entity.WorkoutSessionWithExercises
 import com.calisthenia.core.model.ExerciseCatalog
 import com.calisthenia.core.model.ExerciseDetail
 import com.calisthenia.core.model.ExerciseDifficulty
@@ -11,21 +17,21 @@ import com.calisthenia.core.model.WorkoutPlan
 import com.calisthenia.core.model.WorkoutSession
 import com.calisthenia.domain.repository.WorkoutGenerationRequest
 import com.calisthenia.domain.repository.WorkoutRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.datetime.Clock
-import kotlin.random.Random
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.random.Random
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Clock
+import java.util.UUID
 
 @Singleton
-class DefaultWorkoutRepository @Inject constructor() : WorkoutRepository {
+class DefaultWorkoutRepository @Inject constructor(
+    private val workoutPlanDao: WorkoutPlanDao,
+) : WorkoutRepository {
 
-    private val planState = MutableStateFlow<WorkoutPlan?>(null)
-
-    override fun observeActivePlan(): Flow<WorkoutPlan?> = planState.asStateFlow()
+    override fun observeActivePlan(): Flow<WorkoutPlan?> =
+        workoutPlanDao.observePlan().map { wrapper -> wrapper?.toDomain() }
 
     override suspend fun generatePlan(request: WorkoutGenerationRequest): WorkoutPlan {
         val adjustedSessions = request.sessionsPerWeek.coerceIn(2, 5)
@@ -55,8 +61,8 @@ class DefaultWorkoutRepository @Inject constructor() : WorkoutRepository {
     }
 
     override suspend fun savePlan(plan: WorkoutPlan) {
-        planState.value = plan
-        // TODO persistir en Room y sincronizar con Firestore
+        val (planEntity, sessionEntities, exerciseEntities) = plan.toEntities()
+        workoutPlanDao.replacePlan(planEntity, sessionEntities, exerciseEntities)
     }
 
     private fun createSessionForFocus(
@@ -136,15 +142,91 @@ class DefaultWorkoutRepository @Inject constructor() : WorkoutRepository {
     private fun WorkoutGenerationRequest.deriveExperienceLevel(): ExperienceLevel = when (goal.lowercase()) {
         "hipertrofia", "masa", "musculo", "m?sculo" -> ExperienceLevel.INTERMEDIATE
         "fuerza" -> ExperienceLevel.ADVANCED
-        "definicion", "definici?n", "perder grasa" -> ExperienceLevel.INTERMEDIATE
+        "definici?n", "perder grasa", "definicion" -> ExperienceLevel.INTERMEDIATE
         else -> ExperienceLevel.BEGINNER
     }
 
     private fun planNameForGoal(goal: String): String = when (goal.lowercase()) {
         "hipertrofia", "masa", "musculo", "m?sculo" -> "Hipertrofia funcional"
         "fuerza" -> "Fuerza y control"
-        "definicion", "definici?n", "perder grasa" -> "Definici?n con calistenia"
+        "definici?n", "perder grasa", "definicion" -> "Definici?n con calistenia"
         else -> "Plan integral de calistenia"
+    }
+
+    private fun WorkoutPlanWithSessions.toDomain(): WorkoutPlan {
+        val sessionDomains = sessions
+            .sortedBy { it.session.orderIndex }
+            .map { sessionWith -> sessionWith.toDomain() }
+
+        return WorkoutPlan(
+            id = plan.id,
+            name = plan.name,
+            focus = plan.focus,
+            level = plan.level,
+            sessions = sessionDomains,
+            lastUpdated = plan.lastUpdated,
+        )
+    }
+
+    private fun WorkoutSessionWithExercises.toDomain(): WorkoutSession =
+        WorkoutSession(
+            dayOfWeek = session.dayOfWeek,
+            notes = session.notes,
+            exercises = exercises
+                .sortedBy { it.orderIndex }
+                .map { entity ->
+                    WorkoutExercise(
+                        id = entity.exerciseRef,
+                        name = entity.name,
+                        primaryMuscles = entity.primaryMuscles,
+                        sets = entity.sets,
+                        reps = entity.reps,
+                        durationSeconds = entity.durationSeconds,
+                        restSeconds = entity.restSeconds,
+                        mediaUrl = entity.mediaUrl,
+                    )
+                },
+        )
+
+    private fun WorkoutPlan.toEntities(): Triple<WorkoutPlanEntity, List<WorkoutSessionEntity>, List<WorkoutExerciseEntity>> {
+        val planEntity = WorkoutPlanEntity(
+            id = id,
+            name = name,
+            focus = focus,
+            level = level,
+            lastUpdated = lastUpdated,
+        )
+
+        val sessionEntities = mutableListOf<WorkoutSessionEntity>()
+        val exerciseEntities = mutableListOf<WorkoutExerciseEntity>()
+
+        sessions.forEachIndexed { index, session ->
+            val sessionId = "$id-$index"
+            sessionEntities += WorkoutSessionEntity(
+                sessionId = sessionId,
+                planId = id,
+                dayOfWeek = session.dayOfWeek,
+                notes = session.notes,
+                orderIndex = index,
+            )
+
+            session.exercises.forEachIndexed { exerciseIndex, exercise ->
+                exerciseEntities += WorkoutExerciseEntity(
+                    sessionId = sessionId,
+                    orderIndex = exerciseIndex,
+                    exerciseRef = exercise.id,
+                    name = exercise.name,
+                    primaryMuscles = exercise.primaryMuscles,
+                    sets = exercise.sets,
+                    reps = exercise.reps,
+                    durationSeconds = exercise.durationSeconds,
+                    restSeconds = exercise.restSeconds,
+                    mediaUrl = exercise.mediaUrl,
+                )
+            }
+        }
+
+        return Triple(planEntity, sessionEntities, exerciseEntities)
     }
 
     private companion object {

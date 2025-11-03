@@ -1,26 +1,69 @@
 package com.calisthenia.data.repository
 
+import com.calisthenia.core.database.dao.ProgressEntryDao
+import com.calisthenia.core.database.entity.ProgressEntryEntity
+import com.calisthenia.core.model.BodyMeasurements
 import com.calisthenia.core.model.ProgressEntry
 import com.calisthenia.domain.repository.ProgressRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 @Singleton
-class DefaultProgressRepository @Inject constructor() : ProgressRepository {
+class DefaultProgressRepository @Inject constructor(
+    private val progressEntryDao: ProgressEntryDao,
+) : ProgressRepository {
 
-    private val entries = MutableStateFlow<List<ProgressEntry>>(emptyList())
-
-    override fun observeProgress(): Flow<List<ProgressEntry>> = entries.asStateFlow()
+    override fun observeProgress(): Flow<List<ProgressEntry>> =
+        progressEntryDao.observeEntries().map { list -> list.map { it.toDomain() } }
 
     override suspend fun addEntry(entry: ProgressEntry) {
-        entries.value = entries.value + entry
-        // TODO persistir en base local y subir a Firestore
+        progressEntryDao.insert(entry.toEntity())
     }
 
     override suspend fun deleteEntry(id: String) {
-        entries.value = entries.value.filterNot { it.id == id }
+        progressEntryDao.deleteById(id)
     }
 }
+
+private fun ProgressEntryEntity.toDomain(): ProgressEntry {
+    val measurements = listOf(chestCm, waistCm, hipCm, armCm, thighCm)
+    val bodyMeasurements = if (measurements.all { it == null }) {
+        null
+    } else {
+        BodyMeasurements(
+            chestCm = chestCm,
+            waistCm = waistCm,
+            hipCm = hipCm,
+            armCm = armCm,
+            thighCm = thighCm,
+        )
+    }
+
+    return ProgressEntry(
+        id = id,
+        userId = userId,
+        timestamp = timestamp,
+        weightKg = weightKg,
+        bodyFatPercentage = bodyFatPercentage,
+        measurements = bodyMeasurements,
+        workoutNotes = workoutNotes,
+        imageUrl = imageUrl,
+    )
+}
+
+private fun ProgressEntry.toEntity(): ProgressEntryEntity = ProgressEntryEntity(
+    id = id,
+    userId = userId,
+    timestamp = timestamp,
+    weightKg = weightKg,
+    bodyFatPercentage = bodyFatPercentage,
+    chestCm = measurements?.chestCm,
+    waistCm = measurements?.waistCm,
+    hipCm = measurements?.hipCm,
+    armCm = measurements?.armCm,
+    thighCm = measurements?.thighCm,
+    workoutNotes = workoutNotes,
+    imageUrl = imageUrl,
+)
