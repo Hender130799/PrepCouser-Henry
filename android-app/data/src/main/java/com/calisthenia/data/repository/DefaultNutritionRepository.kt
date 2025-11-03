@@ -7,28 +7,39 @@ import com.calisthenia.core.model.NutritionInfo
 import com.calisthenia.core.model.Recipe
 import com.calisthenia.core.model.RecipeCatalog
 import com.calisthenia.core.model.RecipeIngredient
+import com.calisthenia.core.network.FirebaseSources
 import com.calisthenia.domain.repository.NutritionRepository
 import com.calisthenia.domain.repository.RecipeFilter
+import com.google.firebase.firestore.DocumentSnapshot
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @Singleton
 class DefaultNutritionRepository @Inject constructor(
     private val recipeDao: RecipeDao,
+    private val firebaseSources: FirebaseSources,
 ) : NutritionRepository {
 
-    private val seedingScope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
-        seedingScope.launch {
-            if (recipeDao.count() == 0) {
-                recipeDao.insertAll(RecipeCatalog.recipes.map { it.toEntity() })
-            }
+        scope.launch {
+            runCatching { refreshFromRemote() }
+                .onFailure {
+                    // seed local if remote fails
+                    if (recipeDao.count() == 0) {
+                        recipeDao.insertAll(RecipeCatalog.recipes.map { it.toEntity() })
+                        runCatching { pushAllToRemote() }
+                    }
+                }
         }
     }
 
@@ -52,10 +63,38 @@ class DefaultNutritionRepository @Inject constructor(
         }
 
     override suspend fun refreshRecipes() {
-        recipeDao.deleteAll()
-        recipeDao.insertAll(RecipeCatalog.recipes.map { it.toEntity() })
+        refreshFromRemote()
+    }
+
+    private suspend fun refreshFromRemote() {
+        val snapshot = firebaseSources.firestore
+            .collection(COLLECTION_RECIPES)
+            .get()
+            .await()
+
+        val remoteEntities = snapshot.documents.mapNotNull { it.toRecipeEntity() }
+        if (remoteEntities.isNotEmpty()) {
+            recipeDao.deleteAll()
+            recipeDao.insertAll(remoteEntities)
+        } else if (recipeDao.count() == 0) {
+            recipeDao.insertAll(RecipeCatalog.recipes.map { it.toEntity() })
+            pushAllToRemote()
+        }
+    }
+
+    private suspend fun pushAllToRemote() {
+        val batch = firebaseSources.firestore.batch()
+        val collection = firebaseSources.firestore.collection(COLLECTION_RECIPES)
+        val localEntities = recipeDao.observeRecipes().awaitFirst()
+        localEntities.forEach { entity ->
+            val doc = collection.document(entity.id)
+            batch.set(doc, entity.toRemoteMap())
+        }
+        batch.commit().await()
     }
 }
+
+private suspend fun <T> Flow<T>.awaitFirst(): T = first()
 
 private fun Recipe.toEntity(): RecipeEntity = RecipeEntity(
     id = id,
@@ -104,6 +143,77 @@ private fun RecipeEntity.toDomain(): Recipe = Recipe(
     imageUrl = imageUrl,
 )
 
+private fun RecipeEntity.toRemoteMap(): Map<String, Any?> = mapOf(
+    Field.ID to id,
+    Field.TITLE to title,
+    Field.DESCRIPTION to description,
+    Field.MEAL_TYPE to mealType.name,
+    Field.PREP to prepTimeMinutes,
+    Field.COOK to cookTimeMinutes,
+    Field.SERVINGS to servings,
+    Field.INGREDIENTS to ingredientsSerialized,
+    Field.STEPS to stepsSerialized,
+    Field.CALORIES to calories,
+    Field.PROTEIN to protein,
+    Field.CARBS to carbs,
+    Field.FATS to fats,
+    Field.IMAGE to imageUrl,
+)
+
+private fun DocumentSnapshot.toRecipeEntity(): RecipeEntity? {
+    if (!exists()) return null
+    val id = getString(Field.ID) ?: return null
+    val title = getString(Field.TITLE) ?: return null
+    val description = getString(Field.DESCRIPTION) ?: ""
+    val mealTypeString = getString(Field.MEAL_TYPE) ?: MealType.DESAYUNO.name
+    val mealType = runCatching { MealType.valueOf(mealTypeString) }.getOrDefault(MealType.DESAYUNO)
+    val prep = getLong(Field.PREP)?.toInt() ?: 0
+    val cook = getLong(Field.COOK)?.toInt() ?: 0
+    val servings = getLong(Field.SERVINGS)?.toInt() ?: 1
+    val ingredients = getString(Field.INGREDIENTS) ?: ""
+    val steps = getString(Field.STEPS) ?: ""
+    val calories = getLong(Field.CALORIES)?.toInt() ?: 0
+    val protein = getDouble(Field.PROTEIN) ?: 0.0
+    val carbs = getDouble(Field.CARBS) ?: 0.0
+    val fats = getDouble(Field.FATS) ?: 0.0
+    val image = getString(Field.IMAGE)
+
+    return RecipeEntity(
+        id = id,
+        title = title,
+        description = description,
+        mealType = mealType,
+        prepTimeMinutes = prep,
+        cookTimeMinutes = cook,
+        servings = servings,
+        ingredientsSerialized = ingredients,
+        stepsSerialized = steps,
+        calories = calories,
+        protein = protein,
+        carbs = carbs,
+        fats = fats,
+        imageUrl = image,
+    )
+}
+
 private const val INGREDIENT_DELIMITER = "||"
 private const val VALUE_DELIMITER = "::"
 private const val STEP_DELIMITER = "||"
+private const val COLLECTION_RECIPES = "recipes"
+
+private object Field {
+    const val ID = "id"
+    const val TITLE = "title"
+    const val DESCRIPTION = "description"
+    const val MEAL_TYPE = "mealType"
+    const val PREP = "prepTimeMinutes"
+    const val COOK = "cookTimeMinutes"
+    const val SERVINGS = "servings"
+    const val INGREDIENTS = "ingredientsSerialized"
+    const val STEPS = "stepsSerialized"
+    const val CALORIES = "calories"
+    const val PROTEIN = "protein"
+    const val CARBS = "carbs"
+    const val FATS = "fats"
+    const val IMAGE = "imageUrl"
+}

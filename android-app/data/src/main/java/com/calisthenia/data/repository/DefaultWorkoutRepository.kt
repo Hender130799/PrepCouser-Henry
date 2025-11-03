@@ -15,20 +15,38 @@ import com.calisthenia.core.model.TrainingFocus
 import com.calisthenia.core.model.WorkoutExercise
 import com.calisthenia.core.model.WorkoutPlan
 import com.calisthenia.core.model.WorkoutSession
+import com.calisthenia.core.network.FirebaseSources
 import com.calisthenia.domain.repository.WorkoutGenerationRequest
 import com.calisthenia.domain.repository.WorkoutRepository
+import com.google.firebase.firestore.DocumentSnapshot
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.random.Random
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.toEpochMilliseconds
 import java.util.UUID
 
 @Singleton
 class DefaultWorkoutRepository @Inject constructor(
     private val workoutPlanDao: WorkoutPlanDao,
+    private val firebaseSources: FirebaseSources,
 ) : WorkoutRepository {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        scope.launch {
+            runCatching { fetchRemotePlan()?.let { plan -> savePlanLocally(plan) } }
+        }
+    }
 
     override fun observeActivePlan(): Flow<WorkoutPlan?> =
         workoutPlanDao.observePlan().map { wrapper -> wrapper?.toDomain() }
@@ -61,8 +79,30 @@ class DefaultWorkoutRepository @Inject constructor(
     }
 
     override suspend fun savePlan(plan: WorkoutPlan) {
+        savePlanLocally(plan)
+        scope.launch { runCatching { pushRemotePlan(plan) } }
+    }
+
+    private suspend fun savePlanLocally(plan: WorkoutPlan) {
         val (planEntity, sessionEntities, exerciseEntities) = plan.toEntities()
         workoutPlanDao.replacePlan(planEntity, sessionEntities, exerciseEntities)
+    }
+
+    private suspend fun fetchRemotePlan(): WorkoutPlan? {
+        val snapshot = firebaseSources.firestore
+            .collection(COLLECTION_PLANS)
+            .document(PLAN_DOC)
+            .get()
+            .await()
+        return snapshot.toWorkoutPlan()
+    }
+
+    private suspend fun pushRemotePlan(plan: WorkoutPlan) {
+        firebaseSources.firestore
+            .collection(COLLECTION_PLANS)
+            .document(PLAN_DOC)
+            .set(plan.toRemoteMap())
+            .await()
     }
 
     private fun createSessionForFocus(
@@ -229,6 +269,90 @@ class DefaultWorkoutRepository @Inject constructor(
         return Triple(planEntity, sessionEntities, exerciseEntities)
     }
 
+    private fun WorkoutPlan.toRemoteMap(): Map<String, Any?> = mapOf(
+        Field.ID to id,
+        Field.NAME to name,
+        Field.FOCUS to focus.name,
+        Field.LEVEL to level.name,
+        Field.LAST_UPDATED to lastUpdated.toEpochMilliseconds(),
+        Field.SESSIONS to sessions.mapIndexed { index, session ->
+            mapOf(
+                Field.DAY_OF_WEEK to session.dayOfWeek,
+                Field.NOTES to session.notes,
+                Field.ORDER_INDEX to index,
+                Field.EXERCISES to session.exercises.mapIndexed { exerciseIndex, exercise ->
+                    mapOf(
+                        Field.EXERCISE_REF to exercise.id,
+                        Field.EXERCISE_NAME to exercise.name,
+                        Field.PRIMARY_MUSCLES to exercise.primaryMuscles.map { it.name },
+                        Field.SETS to exercise.sets,
+                        Field.REPS to exercise.reps,
+                        Field.DURATION to exercise.durationSeconds,
+                        Field.REST to exercise.restSeconds,
+                        Field.MEDIA_URL to exercise.mediaUrl,
+                        Field.EXERCISE_ORDER to exerciseIndex,
+                    )
+                },
+            )
+        },
+    )
+
+    private fun DocumentSnapshot.toWorkoutPlan(): WorkoutPlan? {
+        if (!exists()) return null
+        val id = getString(Field.ID) ?: UUID.randomUUID().toString()
+        val name = getString(Field.NAME) ?: "Plan"
+        val focus = getString(Field.FOCUS)?.let { runCatching { TrainingFocus.valueOf(it) }.getOrNull() } ?: TrainingFocus.FULL_BODY
+        val level = getString(Field.LEVEL)?.let { runCatching { ExperienceLevel.valueOf(it) }.getOrNull() } ?: ExperienceLevel.BEGINNER
+        val lastUpdatedMillis = getLong(Field.LAST_UPDATED) ?: Clock.System.now().toEpochMilliseconds()
+        val sessionMaps = get(Field.SESSIONS) as? List<*>
+
+        val sessionDomains = sessionMaps
+            ?.mapIndexedNotNull { index, sessionAny ->
+                (sessionAny as? Map<*, *>)?.let { map ->
+                    val dayOfWeek = (map[Field.DAY_OF_WEEK] as? Number)?.toInt() ?: index + 1
+                    val notes = map[Field.NOTES] as? String
+                    val exercises = (map[Field.EXERCISES] as? List<*>)
+                        ?.mapIndexedNotNull { exIndex, exAny ->
+                            (exAny as? Map<*, *>)?.let { exMap ->
+                                val ref = exMap[Field.EXERCISE_REF] as? String ?: UUID.randomUUID().toString()
+                                val exName = exMap[Field.EXERCISE_NAME] as? String ?: "Ejercicio"
+                                val muscles = (exMap[Field.PRIMARY_MUSCLES] as? List<*>)
+                                    ?.mapNotNull { (it as? String)?.let { name -> runCatching { MuscleGroup.valueOf(name) }.getOrNull() } }
+                                    ?.takeIf { it.isNotEmpty() }
+                                    ?: listOf(MuscleGroup.FULL_BODY)
+                                val sets = (exMap[Field.SETS] as? Number)?.toInt() ?: 3
+                                val reps = (exMap[Field.REPS] as? Number)?.toInt()
+                                val duration = (exMap[Field.DURATION] as? Number)?.toInt()
+                                val rest = (exMap[Field.REST] as? Number)?.toInt() ?: 60
+                                val mediaUrl = exMap[Field.MEDIA_URL] as? String
+                                WorkoutExercise(
+                                    id = ref,
+                                    name = exName,
+                                    primaryMuscles = muscles,
+                                    sets = sets,
+                                    reps = reps,
+                                    durationSeconds = duration,
+                                    restSeconds = rest,
+                                    mediaUrl = mediaUrl,
+                                )
+                            }
+                        }
+                        ?: emptyList()
+                    WorkoutSession(dayOfWeek = dayOfWeek, notes = notes, exercises = exercises)
+                }
+            }
+            ?: emptyList()
+
+        return WorkoutPlan(
+            id = id,
+            name = name,
+            focus = focus,
+            level = level,
+            sessions = sessionDomains,
+            lastUpdated = Instant.fromEpochMilliseconds(lastUpdatedMillis),
+        )
+    }
+
     private companion object {
         const val EXERCISES_PER_SESSION = 4
         val ISOMETRIC_EXERCISES = setOf(
@@ -236,5 +360,30 @@ class DefaultWorkoutRepository @Inject constructor(
             "hollow-hold",
             "dragon-flag",
         )
+
+        const val COLLECTION_PLANS = "plans"
+        const val PLAN_DOC = "default"
+
+        object Field {
+            const val ID = "id"
+            const val NAME = "name"
+            const val FOCUS = "focus"
+            const val LEVEL = "level"
+            const val LAST_UPDATED = "lastUpdated"
+            const val SESSIONS = "sessions"
+            const val DAY_OF_WEEK = "dayOfWeek"
+            const val NOTES = "notes"
+            const val ORDER_INDEX = "orderIndex"
+            const val EXERCISES = "exercises"
+            const val EXERCISE_REF = "exerciseRef"
+            const val EXERCISE_NAME = "exerciseName"
+            const val PRIMARY_MUSCLES = "primaryMuscles"
+            const val SETS = "sets"
+            const val REPS = "reps"
+            const val DURATION = "durationSeconds"
+            const val REST = "restSeconds"
+            const val MEDIA_URL = "mediaUrl"
+            const val EXERCISE_ORDER = "exerciseOrder"
+        }
     }
 }

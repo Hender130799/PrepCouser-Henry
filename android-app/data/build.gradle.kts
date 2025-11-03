@@ -39,6 +39,9 @@ dependencies {
     implementation(libs.kotlinx.datetime)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore.ktx)
+    implementation(libs.coroutines.play.services)
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
 }
