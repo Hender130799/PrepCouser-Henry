@@ -11,7 +11,7 @@ Proyecto multiplataforma Android nativo (Kotlin + Jetpack Compose) para acompa?a
 
 - `android-app/`: proyecto Gradle multi?m?dulo.
   - `app`: punto de entrada, navegaci?n y configuraci?n de Hilt.
-  - `core*`: utilidades de UI, modelos, base de datos y red.
+  - `core*`: utilidades de UI, modelos, base de datos y red (incluye cat?logos iniciales de ejercicios y recetas).
   - `domain`: casos de uso y contratos.
   - `data`: repositorios y m?dulos de inyecci?n.
   - `feature-*`: capas de UI por funcionalidad (onboarding, rutinas, nutrici?n, progreso, ajustes).
