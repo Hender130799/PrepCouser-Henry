@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Calistenia Nutrici?n</string>
+    <string name="dashboard_title">Tu panel de progreso</string>
+    <string name="dashboard_goto_workouts">Entrenar ahora</string>
+    <string name="dashboard_goto_nutrition">Recetas para ganar masa</string>
+    <string name="dashboard_goto_progress">Ver estad?sticas</string>
+    <string name="dashboard_goto_settings">Ajustes</string>
+</resources>
