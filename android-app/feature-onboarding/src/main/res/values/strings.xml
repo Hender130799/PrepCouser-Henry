@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onboarding_title">Tu perfil de calistenia</string>
+    <string name="onboarding_subtitle">Personalizamos tus rutinas y planes alimenticios con base en tus objetivos.</string>
+
+    <string name="onboarding_section_profile">Datos personales</string>
+    <string name="onboarding_field_name">Nombre</string>
+    <string name="onboarding_field_name_helper">Puedes usar tu nombre o un apodo.</string>
+    <string name="onboarding_field_weight">Peso actual</string>
+    <string name="onboarding_field_height">Estatura</string>
+    <string name="onboarding_unit_kg">kg</string>
+    <string name="onboarding_unit_cm">cm</string>
+
+    <string name="onboarding_section_goals">Objetivo y experiencia</string>
+    <string name="onboarding_goal_prompt">?Cu?l es tu prioridad hoy?</string>
+    <string name="onboarding_experience_prompt">Selecciona tu nivel en calistenia</string>
+
+    <string name="onboarding_section_plan">Plan semanal</string>
+    <string name="onboarding_sessions_title">%1$d sesiones por semana</string>
+    <string name="onboarding_reminder_title">Recordatorios inteligentes</string>
+    <string name="onboarding_reminder_subtitle">Recibe avisos de entrenamiento, comidas y recuperaci?n.</string>
+
+    <string name="onboarding_section_preferences">Preferencias alimentarias</string>
+    <string name="onboarding_preferences_hint">Filtra recetas seg?n tus gustos o necesidades.</string>
+    <string name="onboarding_preference_clear">Sin restricciones</string>
+
+    <string name="onboarding_continue">Guardar y continuar</string>
+</resources>

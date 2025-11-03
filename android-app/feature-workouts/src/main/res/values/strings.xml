@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="workouts_title">Plan de entrenamiento</string>
+    <string name="workouts_action_refresh">Regenerar plan</string>
+    <string name="workouts_loading">Preparando tus ejercicios?</string>
+    <string name="workouts_empty_title">A?n no tienes una rutina</string>
+    <string name="workouts_empty_hint">Crea tu perfil y genera un plan semanal personalizado.</string>
+
+    <string name="workouts_summary_subtitle">Nivel %1$s</string>
+    <string name="workouts_summary_sessions">%1$d sesiones a la semana</string>
+    <string name="workouts_summary_tip">Recuerda calentar 5 minutos y registrar tus repeticiones al finalizar.</string>
+    <string name="workouts_tag_focus">Foco: %1$s</string>
+    <string name="workouts_tag_updated">Actualizado: %1$s</string>
+
+    <string name="workouts_session_title">D?a %1$d</string>
+    <string name="workouts_rest_label">Descanso: %1$d s</string>
+
+    <string name="common_back">Volver</string>
+</resources>
