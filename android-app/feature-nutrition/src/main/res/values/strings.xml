@@ -1,5 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="nutrition_title">Recetas y planes alimenticios</string>
+    <string name="nutrition_title">Recetas para ganar masa</string>
+    <string name="nutrition_loading">Buscando preparaciones ricas en prote?na?</string>
+    <string name="nutrition_empty_title">Sin recetas disponibles</string>
+    <string name="nutrition_empty_hint">Ajusta los filtros o revisa tu conexi?n para ver recomendaciones.</string>
+
+    <string name="nutrition_filters_title">Filtros</string>
+    <string name="nutrition_filter_mealtype">Momento del d?a</string>
+    <string name="nutrition_filter_time">Tiempo total</string>
+    <string name="nutrition_filter_all">Todos</string>
+    <string name="nutrition_filter_time_all">Cualquier duraci?n</string>
+    <string name="nutrition_filter_time_item">Hasta %1$d min</string>
+
+    <string name="nutrition_tag_time">%1$d min</string>
+    <string name="nutrition_tag_servings">%1$d porciones</string>
+
+    <string name="nutrition_macro_protein">Prote?na</string>
+    <string name="nutrition_macro_carbs">Carbohidratos</string>
+    <string name="nutrition_macro_fats">Grasas</string>
+
+    <string name="nutrition_ingredients_title">Ingredientes clave</string>
+    <string name="nutrition_ingredients_more">y %1$d m?s</string>
+    <string name="nutrition_steps_title">Preparaci?n</string>
+    <string name="nutrition_steps_more">+ %1$d pasos</string>
+
     <string name="common_back">Volver</string>
 </resources>

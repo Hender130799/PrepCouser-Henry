@@ -45,6 +45,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.datastore.core)
     implementation(libs.hilt.android)

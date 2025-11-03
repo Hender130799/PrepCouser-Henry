@@ -5,6 +5,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import com.calisthenia.core.ui.LocalSpacing
+import com.calisthenia.core.ui.calisteniaSpacing
 
 private val LightColors = lightColorScheme(
     primary = ColorPalette.Primary,
@@ -35,10 +38,12 @@ fun CalisteniaTheme(
 ) {
     val colors = if (useDarkTheme) DarkColors else LightColors
 
-    MaterialTheme(
-        colorScheme = colors,
-        typography = Typography,
-        shapes = Shapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalSpacing provides calisteniaSpacing()) {
+        MaterialTheme(
+            colorScheme = colors,
+            typography = Typography,
+            shapes = Shapes,
+            content = content,
+        )
+    }
 }

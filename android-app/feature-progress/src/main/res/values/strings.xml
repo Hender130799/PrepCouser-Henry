@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="progress_title">Estad?sticas y registros</string>
+    <string name="progress_title">Tu progreso</string>
+    <string name="progress_summary_title">Resumen</string>
+    <string name="progress_metric_latest">Peso reciente</string>
+    <string name="progress_metric_entries">Registros</string>
+    <string name="progress_add_quick">Registrar progreso r?pido</string>
+    <string name="progress_entry_weight">%1$s kg</string>
+    <string name="progress_entry_no_weight">Peso no registrado</string>
+    <string name="progress_entry_delete">Eliminar registro</string>
     <string name="common_back">Volver</string>
 </resources>

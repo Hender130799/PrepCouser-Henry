@@ -1,9 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Calistenia Nutrici?n</string>
+
     <string name="dashboard_title">Tu panel de progreso</string>
+    <string name="dashboard_loading">Cargando tu informaci?n?</string>
+    <string name="dashboard_greeting_title">Hola, %1$s</string>
+    <string name="dashboard_generic_name">atleta</string>
+    <string name="dashboard_greeting_body">Organizamos %1$d sesiones a la semana para mantener tu progreso.</string>
+
+    <string name="dashboard_next_session_title">Pr?xima sesi?n ? D?a %1$d</string>
+    <string name="dashboard_next_session_more">y %1$d ejercicios m?s</string>
+    <string name="dashboard_next_session_cta">Iniciar entrenamiento</string>
+
+    <string name="dashboard_recipe_title">Receta destacada: %1$s</string>
+    <string name="dashboard_recipe_time">%1$d min</string>
+    <string name="dashboard_recipe_servings">%1$d porciones</string>
+    <string name="dashboard_recipe_cta">Ver receta completa</string>
+
+    <string name="dashboard_progress_title">Evoluci?n reciente</string>
+    <string name="dashboard_progress_weight">Peso actual</string>
+    <string name="dashboard_progress_delta">Variaci?n</string>
+    <string name="dashboard_progress_sessions">D?as activos</string>
+    <string name="dashboard_progress_cta">Registrar progreso</string>
+
+    <string name="dashboard_quick_actions">Accesos r?pidos</string>
     <string name="dashboard_goto_workouts">Entrenar ahora</string>
-    <string name="dashboard_goto_nutrition">Recetas para ganar masa</string>
+    <string name="dashboard_goto_nutrition">Explorar recetas</string>
     <string name="dashboard_goto_progress">Ver estad?sticas</string>
     <string name="dashboard_goto_settings">Ajustes</string>
 </resources>

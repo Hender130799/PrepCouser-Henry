@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_title">Ajustes y preferencias</string>
+    <string name="settings_notifications_title">Notificaciones personales</string>
+    <string name="settings_notifications_body">Recibe recordatorios de entrenamiento, comidas y metas semanales.</string>
+    <string name="settings_security_title">Seguridad</string>
+    <string name="settings_security_body">Protege la aplicaci?n con huella o rostro para evitar accesos no autorizados.</string>
+    <string name="settings_language_title">Idioma de la app</string>
     <string name="common_back">Volver</string>
 </resources>

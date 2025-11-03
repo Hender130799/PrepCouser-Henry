@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.calisthenia.app.dashboard.DashboardRoute
 import com.calisthenia.feature.onboarding.OnboardingRoute
 import com.calisthenia.feature.progress.ProgressRoute
 import com.calisthenia.feature.settings.SettingsRoute
